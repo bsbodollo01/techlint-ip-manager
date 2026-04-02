@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  auth:
+    build: ./auth-service
+    environment:
+      AUTH_PORT: 4001
+      JWT_SECRET: supersecretkey123
+      ACCESS_TOKEN_EXPIRES_IN: 15m
+      REFRESH_TOKEN_EXPIRES_IN: 7d
+      DB_FILE: /data/auth.db
+    volumes:
+      - ./auth-service/data:/data
+    networks:
+      - app-network
+
+  ip:
+    build: ./ip-service
+    environment:
+      IP_PORT: 4002
+      JWT_SECRET: supersecretkey123
+      AUDIT_SECRET: auditsecret123
+      DB_FILE: /data/ip.db
+    volumes:
+      - ./ip-service/data:/data
+    networks:
+      - app-network
+
+  gateway:
+    build: ./gateway
+    environment:
+      GATEWAY_PORT: 4000
+      AUTH_SERVICE_URL: http://auth:4001
+      IP_SERVICE_URL: http://ip:4002
+      JWT_SECRET: supersecretkey123
+      AUDIT_SECRET: auditsecret123
+    ports:
+      - '4000:4000'
+    depends_on:
+      - auth
+      - ip
+    networks:
+      - app-network
+
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_BASE_URL: http://localhost:4000
+    ports:
+      - '4173:80'
+    depends_on:
+      - gateway
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
